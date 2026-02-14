@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - SVJ Portal</title>
+    <link rel="stylesheet" href="/public/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+</head>
+<body>
+    <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+        <div class="card" style="max-width: 400px; width: 100%; margin: 1rem;">
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <h1 style="color: #667eea; margin-bottom: 0.5rem;">SVJ Portal</h1>
+                <p style="color: #64748b;">Flat Building Management System</p>
+            </div>
+
+            <div x-data="loginApp()" @submit.prevent="submitLogin()">
+                <!-- Alert Messages -->
+                <div x-show="message.text" :class="'alert alert-' + message.type" x-text="message.text"></div>
+
+                <!-- Login Form -->
+                <form @submit.prevent="submitLogin()">
+                    <div class="form-group">
+                        <label for="email">Email Address</label>
+                        <input type="email" id="email" x-model="email" required placeholder="your@email.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" x-model="password" required placeholder="••••••••">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-bottom: 1rem;" :disabled="loading">
+                        <span x-show="!loading">Sign In</span>
+                        <span x-show="loading"><i class="spinner"></i> Signing in...</span>
+                    </button>
+                </form>
+
+                <!-- Links -->
+                <div style="text-align: center; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #e2e8f0;">
+                    <p style="margin-bottom: 0.5rem;">
+                        <a href="/forgot-password.html" style="color: #667eea; text-decoration: none;">Forgot your password?</a>
+                    </p>
+                    <p>
+                        Don't have an account?
+                        <a href="/register.html" style="color: #667eea; text-decoration: none; font-weight: 600;">Sign up here</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/public/js/app.js"></script>
+    <script>
+        function loginApp() {
+            return {
+                email: '',
+                password: '',
+                loading: false,
+                message: { text: '', type: 'success' },
+
+                async submitLogin() {
+                    if (!this.email || !this.password) {
+                        this.message = { text: 'Email and password are required', type: 'danger' };
+                        return;
+                    }
+
+                    this.loading = true;
+                    this.message = { text: '', type: 'success' };
+
+                    try {
+                        const response = await fetch('/api/auth/login', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                email: this.email,
+                                password: this.password
+                            })
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            this.message = { text: 'Login successful! Redirecting...', type: 'success' };
+                            setTimeout(() => window.location.href = '/index.php', 1500);
+                        } else {
+                            this.message = { text: data.error || 'Login failed', type: 'danger' };
+                        }
+                    } catch (error) {
+                        this.message = { text: 'Network error: ' + error.message, type: 'danger' };
+                    } finally {
+                        this.loading = false;
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>

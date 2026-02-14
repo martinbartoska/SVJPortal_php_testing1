@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - SVJ Portal</title>
+    <link rel="stylesheet" href="/public/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-brand">SVJ Portal</div>
+        <ul class="nav-links">
+            <li><a href="/index.php">Dashboard</a></li>
+            <li><a href="/surveys.html">Surveys</a></li>
+            <li><a href="/quizzes.html">Quizzes</a></li>
+            <li><a href="/maintenance.html">Maintenance</a></li>
+            <li><a href="/profile.html">Profile</a></li>
+            <li><a href="#" @click="logout()">Logout</a></li>
+        </ul>
+    </nav>
+
+    <main class="container" x-data="profileApp()">
+        <div class="mb-3">
+            <h1>My Profile</h1>
+            <p class="text-muted">Manage your account settings</p>
+        </div>
+
+        <!-- Alert Messages -->
+        <div x-show="message.text" :class="'alert alert-' + message.type" x-text="message.text" class="mb-3"></div>
+
+        <div class="grid grid-2">
+            <!-- Profile Information -->
+            <div class="card">
+                <div class="card-header">Profile Information</div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label>Name</label>
+                        <input type="text" :value="user.name" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" :value="user.email" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label>Role</label>
+                        <input type="text" :value="user.role" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label>Member Since</label>
+                        <input type="text" :value="user.created_at" disabled>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Change Password -->
+            <div class="card">
+                <div class="card-header">Change Password</div>
+                <div class="card-body">
+                    <form @submit.prevent="changePassword()">
+                        <div class="form-group">
+                            <label for="current">Current Password</label>
+                            <input type="password" id="current" x-model="passwordForm.current" required placeholder="••••••••">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="new">New Password</label>
+                            <input type="password" id="new" x-model="passwordForm.new" required placeholder="••••••••">
+                            <small style="color: #64748b;">At least 8 characters</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="confirm">Confirm Password</label>
+                            <input type="password" id="confirm" x-model="passwordForm.confirm" required placeholder="••••••••">
+                        </div>
+
+                        <button type="submit" class="btn btn-primary" :disabled="passwordLoading">
+                            <span x-show="!passwordLoading">Change Password</span>
+                            <span x-show="passwordLoading">Updating...</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Account Actions -->
+        <div class="card mt-3">
+            <div class="card-header">Account Actions</div>
+            <div class="card-body">
+                <button @click="logout()" class="btn btn-danger">Logout</button>
+                <button @click="showDeleteConfirm = true" class="btn btn-danger">Delete Account</button>
+            </div>
+        </div>
+
+        <!-- Delete Account Confirmation -->
+        <div id="deleteModal" class="modal" x-show="showDeleteConfirm">
+            <div class="modal-content" style="max-width: 400px;">
+                <div class="modal-header">Delete Account</div>
+                <div class="card-body">
+                    <p class="text-muted">Are you sure you want to delete your account? This action cannot be undone.</p>
+                </div>
+                <div class="card-footer">
+                    <button @click="showDeleteConfirm = false" class="btn btn-secondary">Cancel</button>
+                    <button @click="deleteAccount()" class="btn btn-danger">Yes, Delete</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer style="text-align: center; padding: 2rem; color: #64748b; border-top: 1px solid #e2e8f0; margin-top: 3rem;">
+        <p>&copy; 2025 SVJ Portal - Flat Building Management System</p>
+    </footer>
+
+    <script src="/public/js/app.js"></script>
+    <script>
+        function profileApp() {
+            return {
+                user: {
+                    name: '',
+                    email: '',
+                    role: '',
+                    created_at: ''
+                },
+                passwordForm: {
+                    current: '',
+                    new: '',
+                    confirm: ''
+                },
+                passwordLoading: false,
+                showDeleteConfirm: false,
+                message: { text: '', type: 'success' },
+
+                init() {
+                    // Check if logged in, if not redirect
+                    this.checkAuth();
+                    this.loadProfile();
+                },
+
+                async checkAuth() {
+                    try {
+                        const response = await fetch('/api/auth/me');
+                        if (!response.ok) {
+                            window.location.href = '/login.html';
+                        }
+                    } catch (error) {
+                        window.location.href = '/login.html';
+                    }
+                },
+
+                async loadProfile() {
+                    try {
+                        const response = await fetch('/api/auth/me');
+                        const data = await response.json();
+                        if (data.success) {
+                            this.user = data.data;
+                        }
+                    } catch (error) {
+                        this.message = { text: 'Failed to load profile', type: 'danger' };
+                    }
+                },
+
+                async changePassword() {
+                    if (!this.passwordForm.current || !this.passwordForm.new || !this.passwordForm.confirm) {
+                        this.message = { text: 'All fields are required', type: 'danger' };
+                        return;
+                    }
+
+                    if (this.passwordForm.new !== this.passwordForm.confirm) {
+                        this.message = { text: 'New passwords do not match', type: 'danger' };
+                        return;
+                    }
+
+                    if (this.passwordForm.new.length < 8) {
+                        this.message = { text: 'Password must be at least 8 characters', type: 'danger' };
+                        return;
+                    }
+
+                    this.passwordLoading = true;
+
+                    try {
+                        const response = await fetch('/api/auth/change-password', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                current_password: this.passwordForm.current,
+                                new_password: this.passwordForm.new
+                            })
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            this.message = { text: 'Password changed successfully', type: 'success' };
+                            this.passwordForm = { current: '', new: '', confirm: '' };
+                        } else {
+                            this.message = { text: data.error || 'Failed to change password', type: 'danger' };
+                        }
+                    } catch (error) {
+                        this.message = { text: 'Network error: ' + error.message, type: 'danger' };
+                    } finally {
+                        this.passwordLoading = false;
+                    }
+                },
+
+                async logout() {
+                    try {
+                        await fetch('/api/auth/logout', { method: 'POST' });
+                        window.location.href = '/login.html';
+                    } catch (error) {
+                        console.error('Logout error:', error);
+                    }
+                },
+
+                async deleteAccount() {
+                    // In production, implement account deletion
+                    this.message = { text: 'Account deletion is not yet implemented', type: 'warning' };
+                    this.showDeleteConfirm = false;
+                }
+            }
+        }
+    </script>
+</body>
+</html>

@@ -11,8 +11,15 @@ CREATE TABLE IF NOT EXISTS users (
     role ENUM('admin', 'resident', 'staff') DEFAULT 'resident',
     flat_number VARCHAR(20),
     phone VARCHAR(20),
+    is_active BOOLEAN DEFAULT TRUE,
+    email_verified BOOLEAN DEFAULT FALSE,
+    reset_token VARCHAR(255),
+    reset_token_expires DATETIME,
+    last_login DATETIME,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_email (email),
+    INDEX idx_reset_token (reset_token)
 );
 
 -- Announcements Table

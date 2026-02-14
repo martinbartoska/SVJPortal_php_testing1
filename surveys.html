@@ -15,7 +15,8 @@
             <li><a href="/surveys.html">Surveys</a></li>
             <li><a href="/quizzes.html">Quizzes</a></li>
             <li><a href="/maintenance.html">Maintenance</a></li>
-            <li><a href="/login.html">Login</a></li>
+            <li><a href="/profile.html">Profile</a></li>
+            <li><a href="#" @click="logout()">Logout</a></li>
         </ul>
     </nav>
 
@@ -104,9 +105,23 @@
             return {
                 surveys: [],
                 selectedRatings: {},
+                
                 init() {
+                    this.checkAuth();
                     this.loadSurveys();
                 },
+
+                async checkAuth() {
+                    try {
+                        const response = await fetch('/api/auth/me');
+                        if (!response.ok) {
+                            window.location.href = '/login.html';
+                        }
+                    } catch (error) {
+                        window.location.href = '/login.html';
+                    }
+                },
+
                 async loadSurveys() {
                     try {
                         // Mock data - replace with API call
@@ -150,6 +165,7 @@
                         console.error('Failed to load surveys:', error);
                     }
                 },
+
                 openSurvey(id) {
                     const survey = this.surveys.find(s => s.id === id);
                     if (survey) {
@@ -157,15 +173,27 @@
                         Utils.openModal('surveyModal');
                     }
                 },
+
                 closeSurvey() {
                     Utils.closeModal('surveyModal');
                 },
+
                 setRating(questionId, rating) {
                     this.selectedRatings[questionId] = rating;
                 },
+
                 async submitSurvey() {
                     Utils.showAlert('Survey submitted successfully!', 'success');
                     this.closeSurvey();
+                },
+
+                async logout() {
+                    try {
+                        await fetch('/api/auth/logout', { method: 'POST' });
+                        window.location.href = '/login.html';
+                    } catch (error) {
+                        console.error('Logout error:', error);
+                    }
                 }
             }
         }

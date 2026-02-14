@@ -15,7 +15,8 @@
             <li><a href="/surveys.html">Surveys</a></li>
             <li><a href="/quizzes.html">Quizzes</a></li>
             <li><a href="/maintenance.html">Maintenance</a></li>
-            <li><a href="/login.html">Login</a></li>
+            <li><a href="/profile.html">Profile</a></li>
+            <li><a href="#" @click="logout()">Logout</a></li>
         </ul>
     </nav>
 
@@ -158,9 +159,23 @@
         function quizzesApp() {
             return {
                 quizzes: [],
+
                 init() {
+                    this.checkAuth();
                     this.loadQuizzes();
                 },
+
+                async checkAuth() {
+                    try {
+                        const response = await fetch('/api/auth/me');
+                        if (!response.ok) {
+                            window.location.href = '/login.html';
+                        }
+                    } catch (error) {
+                        window.location.href = '/login.html';
+                    }
+                },
+
                 async loadQuizzes() {
                     try {
                         // Mock data - replace with API call
@@ -214,6 +229,7 @@
                         console.error('Failed to load quizzes:', error);
                     }
                 },
+
                 startQuiz(id) {
                     const quiz = this.quizzes.find(q => q.id === id);
                     if (quiz) {
@@ -224,9 +240,19 @@
                         Utils.openModal('quizModal');
                     }
                 },
+
                 closeQuiz() {
                     Utils.closeModal('quizModal');
                 },
+
+                async logout() {
+                    try {
+                        await fetch('/api/auth/logout', { method: 'POST' });
+                        window.location.href = '/login.html';
+                    } catch (error) {
+                        console.error('Logout error:', error);
+                    }
+                }
             }
         }
     </script>
