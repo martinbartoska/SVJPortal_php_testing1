@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Surveys - SVJ Portal</title>
+    <link rel="stylesheet" href="/public/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-brand">SVJ Portal</div>
+        <ul class="nav-links">
+            <li><a href="/index.php">Dashboard</a></li>
+            <li><a href="/surveys.html">Surveys</a></li>
+            <li><a href="/quizzes.html">Quizzes</a></li>
+            <li><a href="/maintenance.html">Maintenance</a></li>
+            <li><a href="/login.html">Login</a></li>
+        </ul>
+    </nav>
+
+    <main class="container" x-data="surveysApp()">
+        <div class="mb-3">
+            <h1>Surveys</h1>
+            <p class="text-muted">Share your feedback and opinions</p>
+        </div>
+
+        <!-- Survey List -->
+        <div class="grid grid-2">
+            <template x-for="survey in surveys" :key="survey.id">
+                <div class="card">
+                    <div class="card-header" x-text="survey.title">Survey Title</div>
+                    <div class="card-body">
+                        <p x-text="survey.description">Survey description</p>
+                        <p class="text-muted"><small x-text="`Responses: ${survey.response_count || 0}`">Responses</small></p>
+                    </div>
+                    <div class="card-footer">
+                        <button @click="openSurvey(survey.id)" class="btn btn-primary">Take Survey</button>
+                        <span :class="`badge badge-${survey.status === 'active' ? 'success' : 'primary'}`" x-text="survey.status">Status</span>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        <!-- Empty State -->
+        <div x-show="surveys.length === 0" class="card text-center mt-3">
+            <div class="card-body">
+                <p class="text-muted">No surveys available at this time</p>
+                <a href="/index.php" class="btn btn-primary mt-2">Back to Dashboard</a>
+            </div>
+        </div>
+    </main>
+
+    <!-- Survey Modal -->
+    <div id="surveyModal" class="modal" x-data="{ currentSurvey: null }">
+        <div class="modal-content">
+            <span class="modal-close" @click="closeSurvey()">&times;</span>
+            <div class="modal-header" x-text="currentSurvey?.title">Survey</div>
+            
+            <form @submit.prevent="submitSurvey()">
+                <template x-for="question in currentSurvey?.questions || []" :key="question.id">
+                    <div class="form-group">
+                        <label x-text="question.question"></label>
+                        
+                        <!-- Text Input -->
+                        <div x-show="question.type === 'text'">
+                            <textarea name="response" required></textarea>
+                        </div>
+                        
+                        <!-- Multiple Choice -->
+                        <div x-show="question.type === 'multiple_choice'">
+                            <template x-for="option in question.options || []" :key="option">
+                                <div style="margin-bottom: 0.5rem;">
+                                    <input type="radio" :name="`q_${question.id}`" :value="option">
+                                    <label style="display: inline; margin-left: 0.5rem;" x-text="option"></label>
+                                </div>
+                            </template>
+                        </div>
+
+                        <!-- Rating -->
+                        <div x-show="question.type === 'rating'" class="rating">
+                            <template x-for="i in 5">
+                                <span class="star" @click="setRating(question.id, i)" :class="{ active: selectedRatings[question.id] >= i }">★</span>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+
+                <div class="card-footer mt-3">
+                    <button type="submit" class="btn btn-success">Submit Survey</button>
+                    <button type="button" @click="closeSurvey()" class="btn btn-secondary">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <footer style="text-align: center; padding: 2rem; color: #64748b; border-top: 1px solid #e2e8f0; margin-top: 3rem;">
+        <p>&copy; 2025 SVJ Portal - Flat Building Management System</p>
+    </footer>
+
+    <script src="/public/js/app.js"></script>
+    <script>
+        function surveysApp() {
+            return {
+                surveys: [],
+                selectedRatings: {},
+                init() {
+                    this.loadSurveys();
+                },
+                async loadSurveys() {
+                    try {
+                        // Mock data - replace with API call
+                        this.surveys = [
+                            {
+                                id: 1,
+                                title: 'Building Maintenance Feedback',
+                                description: 'Help us improve our building maintenance services',
+                                status: 'active',
+                                response_count: 12,
+                                questions: [
+                                    {
+                                        id: 1,
+                                        question: 'How satisfied are you with maintenance response time?',
+                                        type: 'rating'
+                                    },
+                                    {
+                                        id: 2,
+                                        question: 'What area needs most improvement?',
+                                        type: 'multiple_choice',
+                                        options: ['Plumbing', 'Electrical', 'HVAC', 'Cleaning']
+                                    }
+                                ]
+                            },
+                            {
+                                id: 2,
+                                title: 'Community Activities Survey',
+                                description: 'What activities would you like to see in our community?',
+                                status: 'active',
+                                response_count: 8,
+                                questions: [
+                                    {
+                                        id: 3,
+                                        question: 'What type of community events interest you?',
+                                        type: 'text'
+                                    }
+                                ]
+                            }
+                        ];
+                    } catch (error) {
+                        console.error('Failed to load surveys:', error);
+                    }
+                },
+                openSurvey(id) {
+                    const survey = this.surveys.find(s => s.id === id);
+                    if (survey) {
+                        document.querySelector('#surveyModal [x-data]').__x.$data.currentSurvey = survey;
+                        Utils.openModal('surveyModal');
+                    }
+                },
+                closeSurvey() {
+                    Utils.closeModal('surveyModal');
+                },
+                setRating(questionId, rating) {
+                    this.selectedRatings[questionId] = rating;
+                },
+                async submitSurvey() {
+                    Utils.showAlert('Survey submitted successfully!', 'success');
+                    this.closeSurvey();
+                }
+            }
+        }
+    </script>
+</body>
+</html>

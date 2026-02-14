@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quizzes - SVJ Portal</title>
+    <link rel="stylesheet" href="/public/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-brand">SVJ Portal</div>
+        <ul class="nav-links">
+            <li><a href="/index.php">Dashboard</a></li>
+            <li><a href="/surveys.html">Surveys</a></li>
+            <li><a href="/quizzes.html">Quizzes</a></li>
+            <li><a href="/maintenance.html">Maintenance</a></li>
+            <li><a href="/login.html">Login</a></li>
+        </ul>
+    </nav>
+
+    <main class="container" x-data="quizzesApp()">
+        <div class="mb-3">
+            <h1>Quizzes</h1>
+            <p class="text-muted">Test your knowledge and earn certificates</p>
+        </div>
+
+        <!-- Quiz List -->
+        <div class="grid grid-2">
+            <template x-for="quiz in quizzes" :key="quiz.id">
+                <div class="card">
+                    <div class="card-header" x-text="quiz.title">Quiz Title</div>
+                    <div class="card-body">
+                        <p x-text="quiz.description">Quiz description</p>
+                        <p class="text-muted">
+                            <small>
+                                <strong>Passing Score:</strong> <span x-text="quiz.passing_score">70</span>%
+                            </small>
+                        </p>
+                        <template x-if="quiz.time_limit">
+                            <p class="text-muted">
+                                <small>
+                                    <strong>Time Limit:</strong> <span x-text="quiz.time_limit">--</span> minutes
+                                </small>
+                            </p>
+                        </template>
+                    </div>
+                    <div class="card-footer">
+                        <button @click="startQuiz(quiz.id)" class="btn btn-primary">Start Quiz</button>
+                        <span :class="`badge badge-${quiz.status === 'active' ? 'success' : 'primary'}`" x-text="quiz.status">Status</span>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        <!-- Empty State -->
+        <div x-show="quizzes.length === 0" class="card text-center mt-3">
+            <div class="card-body">
+                <p class="text-muted">No quizzes available at this time</p>
+                <a href="/index.php" class="btn btn-primary mt-2">Back to Dashboard</a>
+            </div>
+        </div>
+    </main>
+
+    <!-- Quiz Modal -->
+    <div id="quizModal" class="modal" x-data="{ currentQuiz: null, currentQuestion: 0, userAnswers: {} }">
+        <div class="modal-content">
+            <span class="modal-close" @click="closeQuiz()">&times;</span>
+            
+            <div class="modal-header" x-text="currentQuiz?.title">Quiz</div>
+            
+            <!-- Progress Bar -->
+            <div x-show="currentQuiz" style="margin-bottom: 1.5rem;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                    <span>Question Progress</span>
+                    <span x-text="`${currentQuestion + 1} / ${currentQuiz?.questions?.length || 0}`"></span>
+                </div>
+                <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
+                    <div :style="`width: ${((currentQuestion + 1) / (currentQuiz?.questions?.length || 1)) * 100}%`" 
+                         style="height: 100%; background: #2563eb; transition: width 0.3s;"></div>
+                </div>
+            </div>
+
+            <!-- Current Question -->
+            <template x-if="currentQuiz && currentQuiz.questions">
+                <div>
+                    <template x-if="currentQuestion < currentQuiz.questions.length">
+                        <div class="form-group">
+                            <div x-text="currentQuiz.questions[currentQuestion].question" 
+                                 style="font-weight: 600; margin-bottom: 1.5rem; font-size: 1.1rem;"></div>
+                            
+                            <!-- Multiple Choice -->
+                            <div x-show="currentQuiz.questions[currentQuestion].type === 'multiple_choice'">
+                                <template x-for="(option, index) in currentQuiz.questions[currentQuestion].options || []" :key="index">
+                                    <div style="margin-bottom: 0.75rem;">
+                                        <input type="radio" 
+                                               :id="`option_${index}`"
+                                               :name="`q_${currentQuestion}`"
+                                               :value="option"
+                                               @change="userAnswers[currentQuestion] = option">
+                                        <label :for="`option_${index}`" style="display: inline; margin-left: 0.5rem; cursor: pointer;" x-text="option"></label>
+                                    </div>
+                                </template>
+                            </div>
+
+                            <!-- True/False -->
+                            <div x-show="currentQuiz.questions[currentQuestion].type === 'true_false'">
+                                <div style="margin-bottom: 0.75rem;">
+                                    <input type="radio" id="true_opt" name="tf" value="true" @change="userAnswers[currentQuestion] = 'true'">
+                                    <label for="true_opt" style="display: inline; margin-left: 0.5rem; cursor: pointer;">True</label>
+                                </div>
+                                <div style="margin-bottom: 0.75rem;">
+                                    <input type="radio" id="false_opt" name="tf" value="false" @change="userAnswers[currentQuestion] = 'false'">
+                                    <label for="false_opt" style="display: inline; margin-left: 0.5rem; cursor: pointer;">False</label>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Quiz Complete -->
+                    <template x-if="currentQuestion >= currentQuiz.questions.length">
+                        <div class="text-center">
+                            <h2>Quiz Completed!</h2>
+                            <p class="text-muted mt-2">Thank you for completing the quiz.</p>
+                        </div>
+                    </template>
+                </div>
+            </template>
+
+            <!-- Navigation -->
+            <div class="card-footer mt-3">
+                <button type="button" 
+                        @click="previousQuestion()" 
+                        x-show="currentQuestion > 0"
+                        class="btn btn-secondary">Previous</button>
+                
+                <button type="button" 
+                        @click="nextQuestion()" 
+                        x-show="currentQuestion < (currentQuiz?.questions?.length || 0) - 1"
+                        class="btn btn-primary">Next</button>
+                
+                <button type="button" 
+                        @click="completeQuiz()" 
+                        x-show="currentQuestion === (currentQuiz?.questions?.length || 0) - 1"
+                        class="btn btn-success">Submit Quiz</button>
+                
+                <button type="button" @click="closeQuiz()" class="btn btn-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <footer style="text-align: center; padding: 2rem; color: #64748b; border-top: 1px solid #e2e8f0; margin-top: 3rem;">
+        <p>&copy; 2025 SVJ Portal - Flat Building Management System</p>
+    </footer>
+
+    <script src="/public/js/app.js"></script>
+    <script>
+        function quizzesApp() {
+            return {
+                quizzes: [],
+                init() {
+                    this.loadQuizzes();
+                },
+                async loadQuizzes() {
+                    try {
+                        // Mock data - replace with API call
+                        this.quizzes = [
+                            {
+                                id: 1,
+                                title: 'Building Safety Quiz',
+                                description: 'Learn about fire safety and emergency procedures',
+                                status: 'active',
+                                passing_score: 70,
+                                time_limit: 15,
+                                attempt_count: 24,
+                                questions: [
+                                    {
+                                        id: 1,
+                                        question: 'What should you do first in case of fire?',
+                                        type: 'multiple_choice',
+                                        options: ['Call 911', 'Evacuate immediately', 'Sound alarm', 'Find a safe spot']
+                                    },
+                                    {
+                                        id: 2,
+                                        question: 'Emergency exits should be kept clear at all times.',
+                                        type: 'true_false'
+                                    },
+                                    {
+                                        id: 3,
+                                        question: 'Where is the nearest fire extinguisher to your flat?',
+                                        type: 'multiple_choice',
+                                        options: ['In the hallway', 'In the stairwell', 'In the gym', 'Unknown']
+                                    }
+                                ]
+                            },
+                            {
+                                id: 2,
+                                title: 'Community Guidelines Quiz',
+                                description: 'Review our community rules and guidelines',
+                                status: 'active',
+                                passing_score: 80,
+                                attempt_count: 18,
+                                questions: [
+                                    {
+                                        id: 4,
+                                        question: 'What are the quiet hours in the building?',
+                                        type: 'multiple_choice',
+                                        options: ['8 PM to 8 AM', '10 PM to 6 AM', '9 PM to 7 AM', '11 PM to 8 AM']
+                                    }
+                                ]
+                            }
+                        ];
+                    } catch (error) {
+                        console.error('Failed to load quizzes:', error);
+                    }
+                },
+                startQuiz(id) {
+                    const quiz = this.quizzes.find(q => q.id === id);
+                    if (quiz) {
+                        const modalData = document.querySelector('#quizModal [x-data]').__x.$data;
+                        modalData.currentQuiz = quiz;
+                        modalData.currentQuestion = 0;
+                        modalData.userAnswers = {};
+                        Utils.openModal('quizModal');
+                    }
+                },
+                closeQuiz() {
+                    Utils.closeModal('quizModal');
+                },
+            }
+        }
+    </script>
+</body>
+</html>
